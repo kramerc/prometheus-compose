@@ -58,9 +58,13 @@ To add a new Proxmox cluster, add a new module section and update `prometheus.ym
 
 **Creating a Proxmox API token:**
 1. Log in to your Proxmox web interface
-2. Navigate to Datacenter → Permissions → API Tokens
-3. Create a new token for the `prometheus@pve` user
-4. Copy the token ID and secret value
+2. Navigate to Datacenter → Permissions → Users
+3. Create or verify the `prometheus@pve` user exists
+4. Assign the `PVESysAdmin` role to the user at the Datacenter level
+5. Navigate to Datacenter → Permissions → API Tokens
+6. Create a new token for the `prometheus@pve` user with the token ID `exporter`
+7. Ensure the token also has the `PVESysAdmin` role assigned
+8. Copy the generated token secret value
 
 ### 3. Prometheus Scrape Configuration
 
@@ -169,8 +173,8 @@ docker compose ps
 ├── compose.yaml              # Docker Compose service definitions
 ├── prometheus.yml            # Prometheus scrape configuration
 ├── pve.yml                   # Proxmox VE credentials (gitignored)
-├── plex.env                 # Plex server configuration (gitignored)
-└── README.md                # This file
+├── plex.env                  # Plex server configuration (gitignored)
+└── README.md                 # This file
 ```
 
 **Current PVE Modules:**
