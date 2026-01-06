@@ -11,10 +11,15 @@ services:
   prometheus-pve-exporter:
     image: prompve/prometheus-pve-exporter
     init: true
-    ports:
-      - "127.0.0.1:9221:9221"
     volumes:
       - ./pve.yml:/etc/prometheus/pve.yml
+    restart: always
+
+  prometheus-plex-exporter:
+    image: ghcr.io/jsclayton/prometheus-plex-exporter
+    ports:
+      - 9000:9000/tcp
+    env_file: plex.env
     restart: always
 
 volumes:
