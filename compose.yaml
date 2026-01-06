@@ -7,6 +7,9 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     restart: always
+    depends_on:
+      - prometheus-pve-exporter
+      - prometheus-plex-exporter
 
   prometheus-pve-exporter:
     image: prompve/prometheus-pve-exporter
