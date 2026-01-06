@@ -1,4 +1,0 @@
-default:
-  user: prometheus@pve
-  token_name: "your-token-id"
-  token_value: "..."
