@@ -20,8 +20,6 @@ services:
 
   prometheus-plex-exporter:
     image: ghcr.io/jsclayton/prometheus-plex-exporter
-    ports:
-      - 9000:9000/tcp
     env_file: plex.env
     restart: always
 
