@@ -8,8 +8,14 @@ services:
       - prometheus-data:/prometheus
     restart: always
     depends_on:
+      - prometheus-jellyfin-exporter
       - prometheus-pve-exporter
       - prometheus-plex-exporter
+
+  prometheus-jellyfin-exporter:
+    image: rebelcore/jellyfin-exporter:latest
+    env_file: jellyfin.env
+    restart: always
 
   prometheus-pve-exporter:
     image: prompve/prometheus-pve-exporter

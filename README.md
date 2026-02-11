@@ -1,6 +1,6 @@
 # Prometheus Monitoring Stack
 
-A Docker Compose setup for monitoring Proxmox VE (PVE) hosts and Plex Media Server using Prometheus and custom exporters.
+A Docker Compose setup for monitoring Proxmox VE (PVE) hosts, Jellyfin Media Server, and Plex Media Server using Prometheus and custom exporters.
 
 ## Services
 
@@ -9,6 +9,11 @@ A Docker Compose setup for monitoring Proxmox VE (PVE) hosts and Plex Media Serv
 - **Port**: `9090`
 - **Purpose**: Main monitoring and time-series database
 - **Web UI**: http://localhost:9090
+
+### Prometheus Jellyfin Exporter
+- **Image**: `rebelcore/jellyfin-exporter:latest`
+- **Purpose**: Exports metrics from Jellyfin Media Server including user playback status
+- **Port**: `9594` (internal)
 
 ### Prometheus PVE Exporter
 - **Image**: `prompve/prometheus-pve-exporter`
@@ -24,11 +29,27 @@ A Docker Compose setup for monitoring Proxmox VE (PVE) hosts and Plex Media Serv
 
 - Docker and Docker Compose installed
 - Access to Proxmox VE clusters (if monitoring PVE)
+- Access to Jellyfin Media Server (if monitoring Jellyfin)
 - Access to Plex Media Server (if monitoring Plex)
 
 ## Configuration
 
-### 1. Plex Configuration
+### 1. Jellyfin Configuration
+
+Create a `jellyfin.env` file with your Jellyfin server details:
+```env
+JELLYFIN_ADDRESS=http://your-jellyfin-server:8096
+JELLYFIN_TOKEN=your-api-key
+```
+
+**Getting your Jellyfin API key:**
+1. Log in to your Jellyfin web interface
+2. Navigate to Dashboard → Advanced → API Keys
+3. Click the "+" button to create a new API key
+4. Give it a descriptive name (e.g., "Prometheus Exporter")
+5. Copy the generated API key
+
+### 2. Plex Configuration
 
 Create a `plex.env` file with your Plex server details:
 ```env
@@ -39,22 +60,31 @@ PLEX_TOKEN=your-plex-token
 **Getting your Plex token:**
 - Follow the [official Plex documentation](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)
 
-### 2. Proxmox VE Configuration
+### 3. Proxmox VE Configuration
 
-The `pve.yml` file contains credentials for each Proxmox cluster. Each cluster is configured as a separate module:
+Create a `pve.yml` file with credentials for each Proxmox cluster. Each cluster is configured as a separate module.
 
+**Option 1: Token-based authentication (recommended):**
 ```yaml
 alki:
   user: prometheus@pve
   token_name: "exporter"
   token_value: "your-token-value"
-yvr:
-  user: prometheus@pve
-  token_name: "exporter"
-  token_value: "your-token-value"
+  verify_ssl: false
 ```
 
-To add a new Proxmox cluster, add a new module section and update `prometheus.yml` with a corresponding job.
+**Option 2: Password-based authentication (alternative):**
+```yaml
+cluster_name:
+  user: prometheus@pve
+  password: "your-password"
+  verify_ssl: false
+```
+
+To add a new Proxmox cluster:
+1. Add a new module section to `pve.yml`
+2. Create the corresponding user and API token in Proxmox
+3. Update `prometheus.yml` with a corresponding scrape job
 
 **Creating a Proxmox API token:**
 1. Log in to your Proxmox web interface
@@ -66,19 +96,20 @@ To add a new Proxmox cluster, add a new module section and update `prometheus.ym
 7. Ensure the token also has the `PVESysAdmin` role assigned
 8. Copy the generated token secret value
 
-### 3. Prometheus Scrape Configuration
+### 4. Prometheus Scrape Configuration
 
 The `prometheus.yml` file configures what Prometheus monitors:
 
 - **prometheus**: Self-monitoring (scrape interval: 5s)
-- **pve-alki**: Proxmox cluster at `alki.kekra.net`
-- **pve-yvr**: Proxmox cluster at `yvr.kekra.net`
-- **plex**: Plex Media Server metrics
+- **jellyfin**: Jellyfin Media Server metrics (scrape interval: 15s)
+- **pve-alki**: Proxmox cluster at `alki.kekra.net` (scrape interval: 15s)
+- **plex**: Plex Media Server metrics (scrape interval: 15s)
 
 Edit `prometheus.yml` to match your infrastructure:
-- Update PVE target cluster names
+- Update target hostnames and cluster names
 - Modify scrape intervals if needed
 - Add or remove job configurations
+- For PVE jobs, configure the `module`, `cluster`, and `node` parameters to match your `pve.yml` setup
 
 ## Usage
 
@@ -102,6 +133,7 @@ docker compose logs -f
 
 # Specific service
 docker compose logs -f prometheus
+docker compose logs -f prometheus-jellyfin-exporter
 docker compose logs -f prometheus-pve-exporter
 docker compose logs -f prometheus-plex-exporter
 ```
@@ -128,6 +160,12 @@ From here you can:
 Prometheus data is stored in a Docker volume named `prometheus-data`, ensuring metrics persist across container restarts.
 
 ## Monitored Metrics
+
+### Jellyfin Metrics
+- User playback status (playing/paused)
+- Currently playing items (name, type, series/episode info)
+- Active sessions and clients
+- Device information
 
 ### Proxmox VE Metrics
 - CPU usage
@@ -171,19 +209,19 @@ docker compose ps
 ```
 .
 ├── compose.yaml              # Docker Compose service definitions
+├── jellyfin.env              # Jellyfin server configuration (gitignored)
+├── plex.env                  # Plex server configuration (gitignored)
 ├── prometheus.yml            # Prometheus scrape configuration
 ├── pve.yml                   # Proxmox VE credentials (gitignored)
-├── plex.env                  # Plex server configuration (gitignored)
 └── README.md                 # This file
 ```
 
 **Current PVE Modules:**
 - `alki` - Proxmox cluster at alki.kekra.net
-- `yvr` - Proxmox cluster at yvr.kekra.net
 
 ## Security Notes
 
-- Never commit `plex.env` or `pve.yml` to version control (they contain sensitive credentials)
+- Never commit `jellyfin.env`, `plex.env` or `pve.yml` to version control (they contain sensitive credentials)
 - Use API tokens with minimal required permissions
 - Consider running Prometheus behind a reverse proxy with authentication for production use
 - Restrict network access to the Prometheus port (9090) if exposed
